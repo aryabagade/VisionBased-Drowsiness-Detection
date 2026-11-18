@@ -1,498 +1,338 @@
+"""
+DriveGuard AI - Streamlit Web Dashboard
+Department of Artificial Intelligence & Data Science
+Vishwakarma Institute of Technology, Pune
+"""
 
 import os
-import threading
+import sys
 import time
+import threading
 from pathlib import Path
+from datetime import datetime
 
 import cv2
+import pandas as pd
 import streamlit as st
-import torch
-import torch.nn as nn
 from PIL import Image
-from torchvision.models import alexnet
-from torchvision import transforms
 
+# Add project root to sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from core.detector import DriverMonitoringEngine
 
 # =========================================================
-# 1. STREAMLIT PAGE CONFIGURATION
+# 1. STREAMLIT CONFIGURATION & CUSTOM CSS
 # =========================================================
-
 st.set_page_config(
-    page_title="DriveGuard AI",
+    page_title="DriveGuard AI - Driver Monitoring",
     page_icon="🚘",
     layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.markdown(
-    """
-    <style>
-    .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 2.1rem;
+        font-weight: 700;
+        color: #1A365D;
+        margin-bottom: 0px;
     }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+    .sub-header {
+        font-size: 1.0rem;
+        color: #4A5568;
+        margin-bottom: 15px;
+    }
+    .state-card {
+        padding: 12px 18px;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 1.3rem;
+        text-align: center;
+        color: white;
+        margin-bottom: 12px;
+    }
+    .state-normal { background-color: #2F855A; }
+    .state-warning { background-color: #D69E2E; }
+    .state-drowsy { background-color: #E53E3E; }
+    .state-distracted { background-color: #DD6B20; }
+</style>
+""", unsafe_allow_html=True)
 
 
 # =========================================================
-# 2. CONFIGURATION
+# 2. SIDEBAR CONFIGURATION
 # =========================================================
+with st.sidebar:
+    st.image("https://img.icons8.com/color/96/car--v1.png", width=70)
+    st.title("DriveGuard AI")
+    st.caption("AI-Based Real-Time Driver Drowsiness & Motion Monitoring")
+    st.markdown("---")
 
-BASE_DIR = Path(__file__).resolve().parent
+    st.subheader("⚙ Detection Parameters")
+    ear_thresh = st.slider("EAR Threshold (Eye Closure)", 0.15, 0.35, 0.22, 0.01)
+    closure_sec = st.slider("Prolonged Closure Time (Tc in sec)", 0.5, 3.0, 1.5, 0.1)
+    mar_thresh = st.slider("MAR Threshold (Yawning)", 0.40, 0.90, 0.65, 0.05)
+    yaw_thresh = st.slider("Head Turn Yaw Threshold (deg)", 15.0, 45.0, 22.0, 1.0)
+    distract_sec = st.slider("Head Distraction Time (sec)", 1.0, 4.0, 2.0, 0.5)
+    enable_audio = st.checkbox("Enable Audio Buzzer Alert", value=True)
 
-MODEL_PATH = Path(
-    os.environ.get(
-        "DRIVEGUARD_MODEL_PATH",
-        str(BASE_DIR / "pretrainedModel.pth"),
-    )
-)
-
-DEVICE = torch.device("cpu")
-CLASS_NAMES = ["Class 0", "Class 1"]
-
-
-# =========================================================
-# 3. LOAD TRAINED MODEL
-# =========================================================
-
-@st.cache_resource
-def load_detector(model_path):
-    if not Path(model_path).is_file():
-        raise FileNotFoundError(
-            f"Model not found: {model_path}\n"
-            "Place pretrainedModel.pth beside app.py."
-        )
-
-    # Create the same AlexNet-based architecture.
-    model = alexnet(weights=None)
-
-    model.avgpool = nn.AdaptiveAvgPool2d((7, 7))
-    model.classifier[1] = nn.Linear(12544, 4096)
-
-    # IMPORTANT: checkpoint has 2 classes, not 1000.
-    model.classifier[6] = nn.Linear(4096, 2)
-
-    try:
-        checkpoint = torch.load(
-            str(model_path),
-            map_location=DEVICE,
-            weights_only=True,
-        )
-    except TypeError:
-        checkpoint = torch.load(
-            str(model_path),
-            map_location=DEVICE,
-        )
-
-    # Support common checkpoint formats.
-    if isinstance(checkpoint, dict):
-        if "state_dict" in checkpoint:
-            checkpoint = checkpoint["state_dict"]
-        elif "model_state_dict" in checkpoint:
-            checkpoint = checkpoint["model_state_dict"]
-
-    # Handle models saved with DataParallel.
-    if isinstance(checkpoint, dict) and checkpoint:
-        if all(k.startswith("module.") for k in checkpoint):
-            checkpoint = {
-                k.removeprefix("module."): v
-                for k, v in checkpoint.items()
-            }
-
-    # Strict loading ensures incompatible layers are not ignored.
-    model.load_state_dict(checkpoint, strict=True)
-    model.to(DEVICE)
-    model.eval()
-
-    cascade_path = (
-        cv2.data.haarcascades
-        + "haarcascade_eye_tree_eyeglasses.xml"
-    )
-
-    eye_cascade = cv2.CascadeClassifier(cascade_path)
-
-    if eye_cascade.empty():
-        raise RuntimeError("Could not load the OpenCV eye cascade.")
-
-    # Must match the preprocessing used to train your model.
-    preprocess = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225],
-        ),
-    ])
-
-    return model, eye_cascade, preprocess
-
-
-def classify_eye(eye_bgr, model, preprocess):
-    eye_rgb = cv2.cvtColor(eye_bgr, cv2.COLOR_BGR2RGB)
-    image = Image.fromarray(eye_rgb)
-    tensor = preprocess(image).unsqueeze(0).to(DEVICE)
-
-    with torch.inference_mode():
-        logits = model(tensor)
-        probabilities = torch.softmax(logits, dim=1)
-        confidence, prediction = probabilities.max(dim=1)
-
-    return int(prediction.item()), float(confidence.item())
+    st.markdown("---")
+    st.subheader("System Specifications")
+    st.write("**Model:** `DrowsyEyeNet` (.pth)")
+    st.write("**Input Resolution:** 1280 × 720 (30 FPS)")
+    st.write("**Landmarks:** MediaPipe 468 3D Points")
+    st.write("**Head Pose:** solvePnP Euler (Yaw, Pitch, Roll)")
+    st.write("**Affiliation:** VIT Pune (Dept. of AI & DS)")
 
 
 # =========================================================
-# 4. DIRECT OPENCV LIVE CAMERA
+# 3. BACKGROUND CAMERA THREAD WORKER
 # =========================================================
-
-class LiveCameraMonitor:
-    def __init__(self, model, eye_cascade, preprocess):
-        self.model = model
-        self.eye_cascade = eye_cascade
-        self.preprocess = preprocess
-
+class StreamlitCameraWorker:
+    def __init__(self, ear_th, closure_th, mar_th, yaw_th, distract_th, audio_on):
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
         self.thread = None
-
-        self.latest_frame = None
-        self.error = None
         self.running = False
-        self.frames_processed = 0
-        self.eye_count = 0
-        self.predictions = []
+        self.latest_frame = None
+        self.latest_telemetry = None
+        self.error_msg = None
+
+        model_path = Path(__file__).resolve().parent / "pretrainedModel.pth"
+        if not model_path.is_file():
+            model_path = BASE_DIR / "models" / "pretrainedModel.pth"
+
+        self.engine = DriverMonitoringEngine(
+            model_path=str(model_path) if model_path.is_file() else None,
+            ear_threshold=ear_th,
+            closure_time_threshold=closure_th,
+            mar_threshold=mar_th,
+            yawn_time_threshold=1.8,
+            yaw_threshold=yaw_th,
+            pitch_threshold=18.0,
+            distraction_time_threshold=distract_th,
+            enable_audio=audio_on,
+            log_file=str(BASE_DIR / "logs" / "driver_events.csv")
+        )
 
     def start(self):
         if self.thread and self.thread.is_alive():
             return
-
         self.stop_event.clear()
-
-        with self.lock:
-            self.latest_frame = None
-            self.error = None
-            self.frames_processed = 0
-            self.eye_count = 0
-            self.predictions = []
-            self.running = True
-
-        self.thread = threading.Thread(
-            target=self._camera_loop,
-            daemon=True,
-        )
+        self.running = True
+        self.thread = threading.Thread(target=self._capture_loop, daemon=True)
         self.thread.start()
 
     def stop(self):
         self.stop_event.set()
-
         if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=3)
+            self.thread.join(timeout=2.5)
+        self.running = False
 
+    def get_snapshot(self):
         with self.lock:
-            self.running = False
+            frame = self.latest_frame.copy() if self.latest_frame is not None else None
+            telemetry = dict(self.latest_telemetry) if self.latest_telemetry else {}
+            return frame, telemetry, self.running, self.error_msg
 
-    def snapshot(self):
-        with self.lock:
-            frame = (
-                self.latest_frame.copy()
-                if self.latest_frame is not None
-                else None
-            )
-
-            return {
-                "frame": frame,
-                "error": self.error,
-                "running": self.running,
-                "frames": self.frames_processed,
-                "eyes": self.eye_count,
-                "predictions": list(self.predictions),
-            }
-
-    def _camera_loop(self):
-        camera = None
-
+    def _capture_loop(self):
+        cap = None
         try:
-            # Prefer DirectShow on Windows.
             if os.name == "nt":
-                camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-
-                if not camera.isOpened():
-                    camera.release()
-                    camera = cv2.VideoCapture(0)
+                cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+                if not cap.isOpened():
+                    cap.release()
+                    cap = cv2.VideoCapture(0)
             else:
-                camera = cv2.VideoCapture(0)
+                cap = cv2.VideoCapture(0)
 
-            if not camera.isOpened():
-                raise RuntimeError(
-                    "Webcam could not be opened. Close other camera "
-                    "applications and check Windows camera permissions."
-                )
+            if not cap.isOpened():
+                raise RuntimeError("Could not connect to laptop webcam. Ensure camera is plugged in and permissions are enabled.")
 
-            # Request higher resolution; hardware support varies.
-            camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-            camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-            camera.set(cv2.CAP_PROP_FPS, 30)
-            camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-            count = 0
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            cap.set(cv2.CAP_PROP_FPS, 30)
 
             while not self.stop_event.is_set():
-                ok, frame = camera.read()
-
-                if not ok or frame is None:
-                    time.sleep(0.05)
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    time.sleep(0.04)
                     continue
 
-                # Mirror the webcam image.
                 frame = cv2.flip(frame, 1)
-
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-                eyes = self.eye_cascade.detectMultiScale(
-                    gray,
-                    scaleFactor=1.1,
-                    minNeighbors=5,
-                    minSize=(20, 20),
-                )
-
-                current_predictions = []
-
-                for x, y, w, h in eyes:
-                    crop = frame[y:y + h, x:x + w]
-
-                    if crop.size == 0:
-                        continue
-
-                    class_id, score = classify_eye(
-                        crop,
-                        self.model,
-                        self.preprocess,
-                    )
-
-                    class_name = (
-                        CLASS_NAMES[class_id]
-                        if class_id < len(CLASS_NAMES)
-                        else f"Class {class_id}"
-                    )
-
-                    current_predictions.append({
-                        "Eye": len(current_predictions) + 1,
-                        "Prediction": class_name,
-                        "Confidence": f"{score * 100:.2f}%",
-                    })
-
-                    # Yellow boxes avoid assuming either class is
-                    # safe or unsafe before label verification.
-                    cv2.rectangle(
-                        frame,
-                        (x, y),
-                        (x + w, y + h),
-                        (0, 220, 255),
-                        2,
-                    )
-
-                    label = f"{class_name} | {score * 100:.1f}%"
-
-                    cv2.putText(
-                        frame,
-                        label,
-                        (x, max(y - 8, 20)),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.55,
-                        (0, 220, 255),
-                        2,
-                        cv2.LINE_AA,
-                    )
-
-                count += 1
-
-                # Live status overlay.
-                cv2.rectangle(
-                    frame,
-                    (0, 0),
-                    (frame.shape[1], 65),
-                    (25, 25, 25),
-                    -1,
-                )
-
-                cv2.putText(
-                    frame,
-                    "DRIVEGUARD AI | LIVE CAMERA",
-                    (15, 27),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (255, 255, 255),
-                    2,
-                    cv2.LINE_AA,
-                )
-
-                cv2.putText(
-                    frame,
-                    f"Eyes detected: {len(current_predictions)}",
-                    (15, 52),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.55,
-                    (0, 220, 255),
-                    1,
-                    cv2.LINE_AA,
-                )
+                annotated_frame, telemetry = self.engine.process_frame(frame)
 
                 with self.lock:
-                    self.latest_frame = frame.copy()
-                    self.frames_processed = count
-                    self.eye_count = len(current_predictions)
-                    self.predictions = current_predictions
+                    self.latest_frame = annotated_frame
+                    self.latest_telemetry = telemetry
 
-        except Exception as exc:
+        except Exception as e:
             with self.lock:
-                self.error = str(exc)
-
+                self.error_msg = str(e)
         finally:
-            if camera is not None:
-                camera.release()
-
+            if cap:
+                cap.release()
             with self.lock:
                 self.running = False
 
 
 # =========================================================
-# 5. DASHBOARD HEADER AND MODEL INITIALIZATION
+# 4. SESSION STATE INITIALIZATION
 # =========================================================
-
-st.title("🚘 DriveGuard AI")
-st.caption(
-    "Real-time driver eye monitoring using computer vision"
-)
-
-with st.sidebar:
-    st.header("System Information")
-    st.write("**Camera:** Direct OpenCV webcam")
-    st.write("**Inference:** PyTorch on CPU")
-    st.write("**Input size:** 224 × 224")
-    st.write("**Architecture:** AlexNet")
-    st.write(f"**Model file:** {MODEL_PATH.name}")
-
-try:
-    model, eye_cascade, preprocess = load_detector(str(MODEL_PATH))
-except Exception as exc:
-    st.error(f"Could not load the AI model: {exc}")
-    st.info(
-        "Check the model file and verify that its architecture "
-        "and preprocessing match the original training code."
-    )
-    st.stop()
-
-
-# =========================================================
-# 6. SESSION STATE
-# =========================================================
-
-if "monitor" not in st.session_state:
-    st.session_state.monitor = LiveCameraMonitor(
-        model,
-        eye_cascade,
-        preprocess,
+if "camera_worker" not in st.session_state:
+    st.session_state.camera_worker = StreamlitCameraWorker(
+        ear_thresh, closure_sec, mar_thresh, yaw_thresh, distract_sec, enable_audio
     )
 
-monitor = st.session_state.monitor
+worker = st.session_state.camera_worker
+
+# Update engine parameters dynamically
+worker.engine.ear_threshold = ear_thresh
+worker.engine.closure_time_threshold = closure_sec
+worker.engine.mar_threshold = mar_thresh
+worker.engine.yaw_threshold = yaw_thresh
+worker.engine.distraction_time_threshold = distract_sec
+worker.engine.enable_audio = enable_audio
 
 
 # =========================================================
-# 7. CAMERA CONTROLS
+# 5. HEADER & CONTROLS
 # =========================================================
+st.markdown("<div class='main-header'>AI-Based Real-Time Driver Drowsiness & Motion Monitoring System</div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-header'>Inventors: Palomi Gawli, Sankalp Akkar, Suyash Ambi, Arya Bagade | Department of AI & DS, VIT Pune</div>", unsafe_allow_html=True)
 
-start_col, stop_col, _ = st.columns([1, 1, 3])
+btn_c1, btn_c2, btn_c3, btn_c4 = st.columns([1.2, 1.2, 2, 2])
+with btn_c1:
+    if st.button("▶ Start Camera", type="primary", use_container_width=True):
+        worker.start()
 
-with start_col:
-    if st.button(
-        "▶ Start Live Camera",
-        type="primary",
-        use_container_width=True,
-    ):
-        monitor.start()
+with btn_c2:
+    if st.button("■ Stop Camera", use_container_width=True):
+        worker.stop()
 
-with stop_col:
-    if st.button(
-        "■ Stop Camera",
-        use_container_width=True,
-    ):
-        monitor.stop()
-
-
-# =========================================================
-# 8. LIVE DISPLAY
-# =========================================================
-
-@st.fragment(run_every=0.2)
-def show_live_dashboard():
-    data = monitor.snapshot()
-
-    if data["error"]:
-        st.error(f"Camera error: {data['error']}")
-
-    st.subheader("Live Camera Feed")
-
-    if data["frame"] is not None:
-        st.image(
-            data["frame"],
-            channels="BGR",
-            use_container_width=True,
-        )
-    elif data["running"]:
-        st.info("Opening webcam; waiting for the first frame...")
-    else:
-        st.info("Click Start Live Camera to begin.")
-
-    col1, col2, col3 = st.columns(3)
-
-    col1.metric("Eyes Detected", data["eyes"])
-    col2.metric("Frames Processed", data["frames"])
-    col3.metric(
-        "Camera Status",
-        "LIVE" if data["running"] else "STOPPED",
-    )
-
-    st.subheader("Latest Predictions")
-
-    if data["predictions"]:
-        st.dataframe(
-            data["predictions"],
-            use_container_width=True,
-            hide_index=True,
-        )
-    elif data["running"]:
-        st.caption(
-            "No eyes detected in the latest frame. "
-            "Try facing the camera in good lighting."
-        )
-    else:
-        st.caption("Predictions will appear when the camera starts.")
-
-
-show_live_dashboard()
-
-
-# =========================================================
-# 9. PROJECT DESCRIPTION AND LIMITATIONS
-# =========================================================
+with btn_c3:
+    log_path = BASE_DIR / "logs" / "driver_events.csv"
+    if log_path.exists():
+        with open(log_path, "rb") as f:
+            st.download_button(
+                label="📥 Download Event Log (CSV)",
+                data=f,
+                file_name=f"driver_monitoring_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
 st.divider()
-st.subheader("System Workflow")
 
-st.write("1. OpenCV captures live frames from the laptop webcam.")
-st.write("2. Haar Cascade identifies candidate eye regions.")
-st.write("3. The trained PyTorch model classifies each eye crop.")
-st.write("4. Live predictions and annotated frames update on the dashboard.")
+# =========================================================
+# 6. LIVE DASHBOARD DISPLAY FRAGMENT
+# =========================================================
+@st.fragment(run_every=0.15)
+def display_live_dashboard():
+    frame, telemetry, running, error = worker.get_snapshot()
 
-st.warning(
-    "Class 0 and Class 1 are generic labels until verified against "
-    "the training dataset. Do not interpret them as open/closed eyes "
-    "or alert/drowsy status until the class mapping is confirmed. "
-    "This is an academic prototype, not a validated safety system."
-)
+    if error:
+        st.error(f"Camera Error: {error}")
 
-st.caption(
-    "This code does not save video recordings to disk. "
-    "Camera frames are processed by the local Python application."
-)
+    driver_state = telemetry.get("driver_state", "STANDBY")
+
+    # State Badge Banner
+    if driver_state == "NORMAL":
+        st.markdown(f"<div class='state-card state-normal'>DRIVER STATE: {driver_state} (SAFE)</div>", unsafe_allow_html=True)
+    elif driver_state == "WARNING" or "WARNING" in driver_state:
+        st.markdown(f"<div class='state-card state-warning'>DRIVER STATE: {driver_state}</div>", unsafe_allow_html=True)
+    elif "DROWSY" in driver_state:
+        st.markdown(f"<div class='state-card state-drowsy'>🚨 ALERT: {driver_state} DETECTED! TAKE ACTION</div>", unsafe_allow_html=True)
+    elif driver_state == "DISTRACTED":
+        st.markdown(f"<div class='state-card state-distracted'>⚠ ALERT: DRIVER DISTRACTED (HEAD TURNED)</div>", unsafe_allow_html=True)
+    else:
+        st.info("Click '▶ Start Camera' above to begin real-time driver monitoring.")
+
+    # Telemetry Metric Strip
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1.metric("Avg EAR", f"{telemetry.get('avg_ear', 0.0):.2f}", delta="Closed" if telemetry.get('avg_ear', 0.0) < ear_thresh else "Open")
+    m2.metric("Closure Duration", f"{telemetry.get('closure_duration_sec', 0.0):.1f} s", delta=f"Limit: {closure_sec:.1f}s")
+    m3.metric("Mouth MAR (Yawn)", f"{telemetry.get('mar', 0.0):.2f}")
+    m4.metric("Head Yaw", f"{telemetry.get('head_yaw', 0.0):.0f}°", delta=telemetry.get('head_motion', 'CENTER'))
+    m5.metric("Total Blinks", telemetry.get("total_blinks", 0))
+    m6.metric("Total Yawns", telemetry.get("total_yawns", 0))
+
+    # Live Frame Display
+    col_video, col_info = st.columns([2.5, 1.2])
+
+    with col_video:
+        if frame is not None:
+            st.image(frame, channels="BGR", use_container_width=True)
+        elif running:
+            st.info("Connecting to webcam; please wait...")
+        else:
+            st.caption("Live video stream is stopped. Press 'Start Camera' to resume.")
+
+    with col_info:
+        st.subheader("Deep Learning Inference")
+        st.write(f"**Left Eye:** `{telemetry.get('left_eye', '-')}` ({telemetry.get('left_conf', '-')})")
+        st.write(f"**Right Eye:** `{telemetry.get('right_eye', '-')}` ({telemetry.get('right_conf', '-')})")
+        st.write(f"**Head Pitch:** `{telemetry.get('head_pitch', 0.0):.1f}°`")
+        st.write(f"**Head Roll:** `{telemetry.get('head_roll', 0.0):.1f}°`")
+        st.write(f"**Audio Buzzer:** `{'ON' if enable_audio else 'MUTED'}`")
+
+        # Live Event Log Preview
+        log_path = BASE_DIR / "logs" / "driver_events.csv"
+        if log_path.exists():
+            try:
+                df = pd.read_csv(log_path)
+                if not df.empty:
+                    st.caption("Recent Logged Incidents:")
+                    st.dataframe(df.tail(6)[["Timestamp", "Driver_State", "Avg_EAR", "Eye_Closure_Sec", "Motion_State"]], hide_index=True)
+            except Exception:
+                pass
+
+
+display_live_dashboard()
+
+# =========================================================
+# 7. DOCUMENTATION TABS & PATENT SPECIFICATIONS
+# =========================================================
+st.divider()
+tab1, tab2, tab3 = st.tabs(["📋 System Architecture", "📐 Mathematical Formulations", "📜 Patent Claims & Inventors"])
+
+with tab1:
+    st.markdown("""
+    ### System Pipeline Architecture
+    1. **Frame Acquisition:** Laptop webcam captures 30 FPS color stream (1280 × 720).
+    2. **Face & Eye Landmark Extraction:** MediaPipe Face Mesh identifies 468 spatial coordinates with sub-millimeter precision.
+    3. **Deep Learning Inference:** Left and right eye patches are normalized and fed into `DrowsyEyeNet` (.pth) for classification.
+    4. **Eye Aspect Ratio (EAR) & Mouth Aspect Ratio (MAR):** Continuous geometric aspect tracking.
+    5. **3D Head Pose Analysis (solvePnP):** Estimates driver head rotation (Yaw, Pitch, Roll) relative to the camera focal center.
+    6. **Temporal Reasoning:** Differentiates healthy 150–350ms blinks from dangerous prolonged eye closure ($T_e \ge T_c$).
+    7. **Unified Decision Engine:** Assigns `NORMAL`, `WARNING`, `DROWSY`, or `DISTRACTED` states.
+    8. **Audio/Visual Alert:** Immediate buzzer sound and red visual warning banner to prevent collisions.
+    """)
+
+with tab2:
+    st.markdown(r"""
+    ### Mathematical Modeling
+    - **Eye Aspect Ratio (EAR):**
+      $$EAR = \frac{||p_2 - p_6|| + ||p_3 - p_5||}{2 \cdot ||p_1 - p_4||}$$
+    - **Mouth Aspect Ratio (MAR):**
+      $$MAR = \frac{||p_{top} - p_{bottom}||}{||p_{left} - p_{right}||}$$
+    - **Prolonged Eye Closure Condition:**
+      $$T_e = t_1 - t_0 \ge T_c \quad (T_c \approx 1.5\text{ s})$$
+    - **Head Pose Rotation via solvePnP:**
+      $$s \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} = K \cdot [R | T] \begin{bmatrix} X \\ Y \\ Z \\ 1 \end{bmatrix}$$
+    """)
+
+with tab3:
+    st.markdown("""
+    **Invention Title:** AI-Based Real-Time Driver Drowsiness and Motion Monitoring System Using Deep Learning  
+    **Applicant:** Vishwakarma Institute of Technology, Pune & Vishwakarma University  
+    **Inventors:**
+    - Palomi Sandeep Gawli (`palomi.gawli@vit.edu`)
+    - Sankalp Santosh Akkar (`sankalp.1251010354@vit.edu`)
+    - Suyash Sudhir Ambi (`suyash.1251010552@vit.edu`)
+    - Arya Manish Bagade (`arya.1251010556@vit.edu`)
+    """)

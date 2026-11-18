@@ -1,0 +1,11 @@
+{
+    "Accuracy": 100.0,
+    "Precision_Closed": 100.0,
+    "Recall_Closed": 100.0,
+    "F1_Score_Closed": 100.0,
+    "True_Positives (Closed)": 252,
+    "False_Negatives": 0,
+    "False_Positives": 0,
+    "True_Negatives (Open)": 228,
+    "Total_Validation_Samples": 480
+}
