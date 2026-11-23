@@ -2,7 +2,7 @@
 DriveGuard AI - Premium Streamlit Web Dashboard
 Department of Artificial Intelligence & Data Science
 Vishwakarma Institute of Technology (VIT), Pune
-Course: Image Processing (MM006) | Project & Patent Implementation
+Course: Image Processing (MM006) | Computer Vision Course Project
 """
 
 import os
@@ -215,7 +215,7 @@ if "camera_active" not in st.session_state:
 # 6. HEADER & METADATA BANNER
 # =========================================================
 st.markdown("<div class='main-header'>AI-Based Real-Time Driver Drowsiness & Motion Monitoring System</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-header'>Inventors: Prof. Palomi Gawli, Sankalp Akkar, Suyash Ambi, Arya Bagade | Department of AI & DS, Vishwakarma Institute of Technology, Pune</div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-header'>Project Team: Sankalp Akkar, Suyash Ambi, Arya Bagade | Guide: Prof. Palomi Gawli | Department of AI & DS, Vishwakarma Institute of Technology, Pune</div>", unsafe_allow_html=True)
 
 # Top Action Toolbar
 col_tb1, col_tb2, col_tb3, col_tb4 = st.columns([1.5, 1.5, 2.5, 2.5])
@@ -246,12 +246,11 @@ st.divider()
 # =========================================================
 # 7. MAIN INTERFACE TABS
 # =========================================================
-main_tab, arch_tab, math_tab, eval_tab, patent_tab = st.tabs([
+main_tab, arch_tab, eval_tab, team_tab = st.tabs([
     "🖥️ Live Dashboard & Camera",
-    "📋 System Architecture",
-    "📐 Mathematical Formulations",
+    "📋 System Architecture & Workflow",
     "📊 Model Performance & Metrics",
-    "📜 Patent Claims & Inventors"
+    "👥 Project Team & Department"
 ])
 
 # ---------------------------------------------------------
@@ -507,57 +506,13 @@ with arch_tab:
 
 
 # ---------------------------------------------------------
-# TAB 3: MATHEMATICAL FORMULATIONS
-# ---------------------------------------------------------
-with math_tab:
-    st.markdown("### Core Mathematical Principles (Patent Claims Alignment)")
-
-    col_m1, col_m2 = st.columns(2)
-    with col_m1:
-        st.markdown(r"""
-        #### 1. Eye Aspect Ratio (EAR)
-        $$EAR = \frac{||p_2 - p_6|| + ||p_3 - p_5||}{2 \cdot ||p_1 - p_4||}$$
-        - Evaluated over 6 eye landmarks ($p_1 \dots p_6$).
-        - **Open Eyes:** $EAR \approx 0.28 - 0.38$
-        - **Closed Eyes:** $EAR < 0.22$
-        - Scale-invariant across distances and individual eye shapes.
-        """)
-
-        st.markdown(r"""
-        #### 2. Mouth Aspect Ratio (MAR - Yawning)
-        $$MAR = \frac{||p_{top} - p_{bottom}||}{||p_{left} - p_{right}||}$$
-        - Measures vertical mouth opening relative to lip width.
-        - **Normal Speech:** $MAR < 0.40$
-        - **Active Yawn:** $MAR \ge 0.65$ sustained for $\ge 1.8$s.
-        """)
-
-    with col_m2:
-        st.markdown(r"""
-        #### 3. Temporal Duration Reasoning
-        $$T_e = t_1 - t_0 \ge T_c \quad (T_c = 1.5\text{ s})$$
-        - $T_e < 0.35\text{s} \implies$ **Healthy Biological Blink** (increment count).
-        - $T_e \ge 1.5\text{s} \implies$ **Microsleep / Drowsiness Alarm**.
-        - Completely eliminates single-frame false alarms.
-        """)
-
-        st.markdown(r"""
-        #### 4. 3D Head Pose (Perspective-n-Point)
-        $$s \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} = \mathbf{K} \cdot [\mathbf{R} \mid \mathbf{t}] \begin{bmatrix} X \\ Y \\ Z \\ 1 \end{bmatrix}$$
-        - Maps 3D head model to 2D image coordinates.
-        - Euler angles: **Yaw** (turning), **Pitch** (nodding), **Roll** (tilt).
-        - **Distraction:** $|\text{Yaw}| > 22^\circ$ for $> 2.0$s.
-        - **Nodding Off:** $\text{Pitch} < -18^\circ$ (head slumping down).
-        """)
-
-
-# ---------------------------------------------------------
-# TAB 4: MODEL PERFORMANCE & METRICS
+# TAB 3: MODEL PERFORMANCE & METRICS
 # ---------------------------------------------------------
 with eval_tab:
     st.markdown("### Experimental Results & Validation Metrics")
     
     col_e1, col_e2, col_e3, col_e4 = st.columns(4)
-    col_e1.metric("Validation Accuracy", "99.8%", "Section 7.4")
+    col_e1.metric("Validation Accuracy", "99.8%", "Empirical Eval")
     col_e2.metric("Precision (Closed)", "100.0%", "Zero False Alarms")
     col_e3.metric("Recall (Closed)", "99.6%", "Catches 996/1000")
     col_e4.metric("CPU Latency", "~1.8 ms", "Real-Time 30+ FPS")
@@ -574,17 +529,14 @@ with eval_tab:
 
 
 # ---------------------------------------------------------
-# TAB 5: PATENT CLAIMS & INVENTORS
+# TAB 4: PROJECT TEAM & DEPARTMENT
 # ---------------------------------------------------------
-with patent_tab:
+with team_tab:
     st.markdown("""
-    ### Patent Application Draft & Academic Attribution
-    **Title of Invention:** AI-Based Real-Time Driver Drowsiness and Motion Monitoring System Using Deep Learning  
-    **Applicant Institutes:**  
-    1. Vishwakarma Institute of Technology (VIT), Pune  
-    2. Vishwakarma University, Pune  
+    ### Department of Artificial Intelligence & Data Science
+    **Vishwakarma Institute of Technology (VIT), Pune**
 
-    #### Inventors & Team Members:
+    #### Project Team Members & Mentorship:
     | Name | Institutional Email | Department & Role |
     | :--- | :--- | :--- |
     | **Prof. Palomi Sandeep Gawli** | `palomi.gawli@vit.edu` | Faculty Mentoring Guide |
@@ -592,10 +544,10 @@ with patent_tab:
     | **Suyash Sudhir Ambi** | `suyash.1251010552@vit.edu` | Student Investigator (PRN: 1251010552, Roll: 12) |
     | **Arya Manish Bagade** | `arya.1251010556@vit.edu` | Student Investigator (PRN: 1251010556, Roll: 21) |
 
-    #### Key Claims Defended:
-    - **Claim 1 & 2:** Non-contact real-time camera-based eye state classification via deep learning.
-    - **Claim 3:** Temporal duration filtering separating natural 200ms blinks from prolonged fatigue ($T_e \ge 1.5$s).
-    - **Claim 4 & 5:** 3D Head orientation and motion incorporation (solvePnP Euler Yaw, Pitch, Roll).
-    - **Claim 6:** Multi-indicator categorization into `NORMAL`, `WARNING`, `DROWSY`, and `DISTRACTED`.
-    - **Claim 7 & 8:** Active alert buzzer triggering and timestamped telemetry logging to CSV.
+    #### Key Capabilities Implemented:
+    - Real-time camera-based eye state classification via deep learning (`DrowsyEyeNet`).
+    - Temporal duration filtering separating natural 200ms blinks from prolonged fatigue ($T_e \\ge 1.5$s).
+    - 3D Head orientation and motion estimation (solvePnP Euler Yaw, Pitch, Roll).
+    - Multi-indicator categorization into `NORMAL`, `WARNING`, `DROWSY`, and `DISTRACTED`.
+    - Active audio alert buzzer and automated telemetry logging to CSV.
     """)
