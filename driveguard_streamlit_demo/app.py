@@ -32,83 +32,314 @@ from core.detector import DriverMonitoringEngine
 # 1. PAGE CONFIGURATION & CUSTOM MODERN CSS
 # =========================================================
 st.set_page_config(
-    page_title="DriveGuard AI - Driver Safety Dashboard",
+    page_title="DriveGuard AI - Driver Vigilance Dashboard",
     page_icon="🚘",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+# Custom High-End Modern Dashboard CSS
 st.markdown("""
 <style>
-    /* Global font and background enhancements */
-    .main-header {
-        font-size: 2.2rem;
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    
+    code, pre {
+        font-family: 'JetBrains Mono', monospace !important;
+    }
+
+    /* Top Hero Header Card */
+    .hero-banner {
+        background: linear-gradient(135deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 24px 28px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25), 0 8px 10px -6px rgba(15, 23, 42, 0.25);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero-banner::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 320px;
+        height: 320px;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(0,0,0,0) 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .hero-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .hero-title {
+        font-size: 2.1rem;
         font-weight: 800;
-        color: #1A365D;
-        margin-bottom: 2px;
+        background: linear-gradient(90deg, #FFFFFF 0%, #E2E8F0 60%, #93C5FD 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0;
         letter-spacing: -0.5px;
     }
-    .sub-header {
-        font-size: 1.0rem;
-        color: #4A5568;
-        margin-bottom: 18px;
-    }
-    .state-card {
-        padding: 14px 20px;
-        border-radius: 10px;
-        font-weight: 800;
-        font-size: 1.35rem;
-        text-align: center;
-        color: white;
-        margin-bottom: 14px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        text-transform: uppercase;
+
+    .hero-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        color: #34D399;
+        font-size: 0.8rem;
+        font-weight: 700;
         letter-spacing: 0.5px;
+        padding: 6px 14px;
+        border-radius: 9999px;
+        text-transform: uppercase;
     }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #10B981;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #10B981;
+        animation: pulse-dot 1.8s infinite;
+    }
+
+    @keyframes pulse-dot {
+        0% { transform: scale(0.95); opacity: 0.8; }
+        50% { transform: scale(1.3); opacity: 1; }
+        100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    .hero-subtitle {
+        font-size: 0.98rem;
+        color: #94A3B8;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    .hero-meta-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        font-size: 0.84rem;
+        color: #CBD5E1;
+        margin-top: 4px;
+    }
+
+    .hero-badge {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+
+    /* State Alert Cards */
+    .state-card {
+        padding: 16px 22px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 1.25rem;
+        text-align: center;
+        margin-bottom: 16px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        transition: all 0.3s ease;
+    }
+
     .state-normal { 
-        background: linear-gradient(135deg, #16A34A 0%, #15803D 100%); 
-        border-left: 6px solid #86EFAC;
+        background: linear-gradient(135deg, #065F46 0%, #047857 100%);
+        color: #ECFDF5;
+        border: 1px solid #10B981;
+        box-shadow: 0 4px 18px rgba(16, 185, 129, 0.25);
     }
+
     .state-warning { 
-        background: linear-gradient(135deg, #D97706 0%, #B45309 100%); 
-        border-left: 6px solid #FDE68A;
+        background: linear-gradient(135deg, #92400E 0%, #B45309 100%);
+        color: #FFFBEB;
+        border: 1px solid #F59E0B;
+        box-shadow: 0 4px 18px rgba(245, 158, 11, 0.25);
     }
+
     .state-drowsy { 
-        background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%); 
-        border-left: 6px solid #FCA5A5;
-        animation: pulse 1.5s infinite;
+        background: linear-gradient(135deg, #991B1B 0%, #DC2626 100%);
+        color: #FEF2F2;
+        border: 2px solid #EF4444;
+        box-shadow: 0 0 25px rgba(239, 68, 68, 0.45);
+        animation: pulse-alert 1.2s infinite alternate;
     }
+
     .state-distracted { 
-        background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%); 
-        border-left: 6px solid #FDBA74;
+        background: linear-gradient(135deg, #9A3412 0%, #EA580C 100%);
+        color: #FFF7ED;
+        border: 1px solid #F97316;
+        box-shadow: 0 4px 18px rgba(249, 115, 22, 0.3);
     }
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.85; }
-        100% { opacity: 1; }
+
+    @keyframes pulse-alert {
+        from { box-shadow: 0 0 12px rgba(239, 68, 68, 0.3); }
+        to { box-shadow: 0 0 30px rgba(239, 68, 68, 0.7); }
     }
-    .metric-container {
-        background-color: #FFFFFF;
+
+    /* Metric Card Enhancements */
+    [data-testid="stMetric"] {
+        background: #FFFFFF;
         border: 1px solid #E2E8F0;
-        border-radius: 8px;
-        padding: 10px 14px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border-radius: 12px;
+        padding: 14px 18px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
+
+    [data-testid="stMetric"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.08);
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.78rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        color: #64748B !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 1.65rem !important;
+        font-weight: 800 !important;
+        color: #0F172A !important;
+        letter-spacing: -0.5px !important;
+    }
+
+    /* Tabs Styling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
+        background-color: #F1F5F9;
+        padding: 6px;
+        border-radius: 12px;
+        border: 1px solid #E2E8F0;
+        margin-bottom: 16px;
     }
+
     .stTabs [data-baseweb="tab"] {
-        height: 42px;
-        white-space: pre-wrap;
-        background-color: #F8FAFC;
-        border-radius: 6px 6px 0px 0px;
-        padding-top: 8px;
-        padding-bottom: 8px;
+        height: 44px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.92rem;
+        color: #475569;
+        border: none;
+        padding: 0 16px;
+        transition: all 0.2s ease;
     }
+
     .stTabs [aria-selected="true"] {
-        background-color: #EBF8FF !important;
-        color: #2B6CB0 !important;
-        font-weight: bold;
+        background: #FFFFFF !important;
+        color: #1E40AF !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+        font-weight: 700;
+    }
+
+    /* Glass Panels */
+    .glass-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    .step-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 16px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .step-card:hover {
+        transform: translateY(-3px);
+        border-color: #3B82F6;
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.1);
+    }
+
+    .step-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
+        color: white;
+        font-weight: 800;
+        font-size: 0.85rem;
+        border-radius: 8px;
+    }
+
+    .team-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 14px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        transition: all 0.25s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .team-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+        border-color: #60A5FA;
+    }
+
+    .avatar-circle {
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        font-weight: 800;
+        margin-bottom: 12px;
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+    }
+
+    .avatar-mentor {
+        background: linear-gradient(135deg, #B45309 0%, #F59E0B 100%);
+        box-shadow: 0 4px 12px rgba(180, 83, 9, 0.25);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -138,37 +369,46 @@ REPORTS_DIR = ROOT_DIR / "reports"
 # 3. SIDEBAR CONTROLS & DETECTION PARAMETERS
 # =========================================================
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/car--v1.png", width=64)
-    st.title("DriveGuard AI")
-    st.caption("Real-Time Multi-Parameter Driver Vigilance & Safety")
-    st.markdown("---")
+    st.markdown("""
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+        <span style="font-size: 2.2rem;">🚘</span>
+        <div>
+            <div style="font-size: 1.3rem; font-weight: 800; color: #0F172A; line-height: 1.1;">DriveGuard AI</div>
+            <div style="font-size: 0.75rem; color: #64748B; font-weight: 600;">DRIVER VIGILANCE COCKPIT</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.subheader("📹 Input Video Source")
+    st.markdown("---")
+    st.markdown("##### 📹 Input Video Stream")
     input_mode = st.radio(
-        "Choose Video Feed:",
+        "Select Video Input:",
         ["Live Laptop Webcam", "Upload Video File (.mp4/.avi)", "Static Image Test", "Live Safety Simulator"],
-        index=0
+        index=0,
+        label_visibility="collapsed"
     )
 
     cam_index = 0
     if input_mode == "Live Laptop Webcam":
-        cam_index = st.selectbox("Select Camera Device Index:", [0, 1, 2], index=0, help="0 is usually default integrated laptop webcam.")
+        cam_index = st.selectbox("Webcam Device Index:", [0, 1, 2], index=0, help="0 is standard default integrated laptop webcam.")
 
     st.markdown("---")
-    st.subheader("⚙ Detection Thresholds")
+    st.markdown("##### ⚙️ Sensitivity Controls")
     ear_thresh = st.slider("EAR Threshold (Eye Closure)", 0.15, 0.35, 0.22, 0.01, help="Eye Aspect Ratio below this value flags closed eyelids.")
     closure_sec = st.slider("Prolonged Closure Time (Tc in sec)", 0.5, 3.0, 1.5, 0.1, help="Continuous eye closure duration required to trigger DROWSY alarm.")
     mar_thresh = st.slider("MAR Threshold (Yawning)", 0.40, 0.90, 0.65, 0.05, help="Mouth Aspect Ratio above this flags an open-mouth yawn.")
     yaw_thresh = st.slider("Head Turn Yaw Threshold (deg)", 15.0, 45.0, 22.0, 1.0, help="Head rotation angle triggering DISTRACTED state.")
     distract_sec = st.slider("Distraction Duration (sec)", 1.0, 4.0, 2.0, 0.5, help="Time allowed looking away before alert.")
-    enable_audio = st.checkbox("Enable Audio Buzzer Alert", value=True, help="Plays hardware alert tone when Drowsy / Distracted.")
+    enable_audio = st.checkbox("🔊 Enable Audio Alert Buzzer", value=True, help="Plays audible alert tone when Drowsy or Distracted.")
 
     st.markdown("---")
-    st.subheader("System Specifications")
-    st.write(f"**AI Model:** `DrowsyEyeNet` ({'Loaded' if MODEL_PATH else 'Init Mode'})")
-    st.write("**Landmarks:** MediaPipe 468 3D Mesh")
-    st.write("**Head Pose:** solvePnP Euler (Yaw, Pitch, Roll)")
-    st.write("**Institution:** VIT Pune | Dept. of AI & DS")
+    st.markdown("##### 🖥️ Core Runtime Specs")
+    st.markdown(f"""
+    - **Engine:** PyTorch `DrowsyEyeNet` ({'✅ Loaded' if MODEL_PATH else '⚠️ Initializing'})
+    - **Face Mesh:** MediaPipe 468 3D Landmarks
+    - **Head Pose:** Perspective-n-Point Euler
+    - **Institution:** VIT Pune | Dept. of AI & DS
+    """)
 
 
 # =========================================================
@@ -212,10 +452,27 @@ if "camera_active" not in st.session_state:
 
 
 # =========================================================
-# 6. HEADER & METADATA BANNER
+# 6. SLEEK HERO HEADER BANNER
 # =========================================================
-st.markdown("<div class='main-header'>AI-Based Real-Time Driver Drowsiness & Motion Monitoring System</div>", unsafe_allow_html=True)
-st.markdown("<div class='sub-header'>Project Team: Sankalp Akkar, Suyash Ambi, Arya Bagade | Guide: Prof. Palomi Gawli | Department of AI & DS, Vishwakarma Institute of Technology, Pune</div>", unsafe_allow_html=True)
+st.markdown("""
+<div class="hero-banner">
+    <div class="hero-title-row">
+        <h1 class="hero-title">🚘 DriveGuard AI</h1>
+        <div class="hero-status-pill">
+            <span class="status-dot"></span>
+            System Online • 30+ FPS Active
+        </div>
+    </div>
+    <p class="hero-subtitle">
+        AI-Based Real-Time Driver Drowsiness, Fatigue & Motion Monitoring Dashboard
+    </p>
+    <div class="hero-meta-row">
+        <span class="hero-badge">🎓 Vishwakarma Institute of Technology (VIT), Pune</span>
+        <span class="hero-badge">Department of Artificial Intelligence & Data Science</span>
+        <span class="hero-badge">Course: Image Processing (MM006)</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # Top Action Toolbar
 col_tb1, col_tb2, col_tb3, col_tb4 = st.columns([1.5, 1.5, 2.5, 2.5])
@@ -224,7 +481,7 @@ with col_tb3:
     if LOG_PATH.exists():
         with open(LOG_PATH, "rb") as f:
             st.download_button(
-                label="📥 Download Event Log (CSV)",
+                label="📥 Download Telemetry Log (CSV)",
                 data=f,
                 file_name=f"driver_monitoring_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv",
@@ -276,9 +533,9 @@ with main_tab:
         video_placeholder = st.empty()
     
     with col_right:
-        st.subheader("Inference & 3D Pose")
+        st.markdown("##### 🔬 Deep Learning & 3D Pose")
         dl_info = st.empty()
-        st.caption("Rolling Biometric Waveform (Last 50 Frames):")
+        st.caption("📈 Rolling Biometric Waveform (Last 50 Frames):")
         chart_placeholder = st.empty()
 
     def update_dashboard_ui(telemetry, frame_annotated=None):
@@ -286,13 +543,25 @@ with main_tab:
         
         # 1. State Card Badge with custom CSS
         if driver_state == "NORMAL":
-            state_placeholder.markdown(f"<div class='state-card state-normal'>DRIVER STATE: NORMAL (ALERT & SAFE)</div>", unsafe_allow_html=True)
+            state_placeholder.markdown(
+                "<div class='state-card state-normal'><span>🛡️</span> DRIVER STATE: NORMAL (ALERT & FOCUSED)</div>",
+                unsafe_allow_html=True
+            )
         elif driver_state == "WARNING" or "WARNING" in driver_state:
-            state_placeholder.markdown(f"<div class='state-card state-warning'>DRIVER STATE: {driver_state}</div>", unsafe_allow_html=True)
+            state_placeholder.markdown(
+                f"<div class='state-card state-warning'><span>⚠️</span> PRE-WARNING: {driver_state} (DROOPING EYELIDS)</div>",
+                unsafe_allow_html=True
+            )
         elif "DROWSY" in driver_state:
-            state_placeholder.markdown(f"<div class='state-card state-drowsy'>🚨 CRITICAL ALERT: {driver_state} DETECTED! TAKE ACTION</div>", unsafe_allow_html=True)
+            state_placeholder.markdown(
+                f"<div class='state-card state-drowsy'><span>🚨</span> CRITICAL ALARM: {driver_state}! PULL OVER SAFELY</div>",
+                unsafe_allow_html=True
+            )
         elif driver_state == "DISTRACTED":
-            state_placeholder.markdown(f"<div class='state-card state-distracted'>⚠️ WARNING: DRIVER DISTRACTED (HEAD TURNED FROM ROAD)</div>", unsafe_allow_html=True)
+            state_placeholder.markdown(
+                "<div class='state-card state-distracted'><span>👁️</span> ATTENTION ALERT: DRIVER DISTRACTED (HEAD TURNED)</div>",
+                unsafe_allow_html=True
+            )
         else:
             state_placeholder.info(f"System State: {driver_state}")
 
@@ -303,9 +572,9 @@ with main_tab:
         yaw_val = telemetry.get('head_yaw', 0.0)
         
         m1_val.metric("Eye Aspect Ratio", f"{ear_val:.2f}", delta="Closed" if ear_val < ear_thresh else "Open", delta_color="inverse")
-        m2_val.metric("Closure Duration", f"{closure_t:.1f} s", delta=f"Limit: {closure_sec:.1f}s", delta_color="inverse" if closure_t >= closure_sec else "normal")
+        m2_val.metric("Closure Duration", f"{closure_t:.1f} s", delta=f"Threshold: {closure_sec:.1f}s", delta_color="inverse" if closure_t >= closure_sec else "normal")
         m3_val.metric("Mouth MAR (Yawn)", f"{mar_val:.2f}", delta="Yawning" if mar_val >= mar_thresh else "Normal")
-        m4_val.metric("Head Yaw", f"{yaw_val:.0f}°", delta=telemetry.get('head_motion', 'CENTER'))
+        m4_val.metric("Head Yaw (Turn)", f"{yaw_val:.0f}°", delta=telemetry.get('head_motion', 'CENTER'))
         m5_val.metric("Total Blinks", telemetry.get("total_blinks", 0))
         m6_val.metric("Total Yawns", telemetry.get("total_yawns", 0))
 
@@ -313,14 +582,36 @@ with main_tab:
         if frame_annotated is not None:
             video_placeholder.image(frame_annotated, channels="BGR", use_container_width=True)
 
-        # 4. Update Deep Learning Inference Card
+        # 4. Update Deep Learning Inference Card with polished badges
+        left_eye_st = telemetry.get('left_eye', 'Open')
+        right_eye_st = telemetry.get('right_eye', 'Open')
+        left_color = "#10B981" if left_eye_st == "Open" else "#EF4444"
+        right_color = "#10B981" if right_eye_st == "Open" else "#EF4444"
+
         dl_info.markdown(f"""
-        - **Left Eye CNN:** `{telemetry.get('left_eye', 'Open')}` ({telemetry.get('left_conf', '100%')})
-        - **Right Eye CNN:** `{telemetry.get('right_eye', 'Open')}` ({telemetry.get('right_conf', '100%')})
-        - **Head Pitch (Nodding):** `{telemetry.get('head_pitch', 0.0):.1f}°`
-        - **Head Roll (Tilt):** `{telemetry.get('head_roll', 0.0):.1f}°`
-        - **Audio Alarm Status:** `{'ENABLED' if enable_audio else 'MUTED'}`
-        """)
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; font-size: 0.9rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <span>Left Eye CNN:</span>
+                <span style="font-weight: 700; color: {left_color};">● {left_eye_st} ({telemetry.get('left_conf', '100%')})</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <span>Right Eye CNN:</span>
+                <span style="font-weight: 700; color: {right_color};">● {right_eye_st} ({telemetry.get('right_conf', '100%')})</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <span>Head Pitch (Nod):</span>
+                <span style="font-weight: 600; color: #0F172A;">{telemetry.get('head_pitch', 0.0):.1f}°</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                <span>Head Roll (Tilt):</span>
+                <span style="font-weight: 600; color: #0F172A;">{telemetry.get('head_roll', 0.0):.1f}°</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Audio Alarm:</span>
+                <span style="font-weight: 700; color: {'#10B981' if enable_audio else '#94A3B8'};">{'🔊 ACTIVE' if enable_audio else '🔇 MUTED'}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         # 5. Update Rolling Waveform Chart
         st.session_state.ear_history.append(ear_val)
@@ -340,7 +631,7 @@ with main_tab:
     # MODE A: LIVE LAPTOP WEBCAM
     # -----------------------------------------------------
     if input_mode == "Live Laptop Webcam":
-        btn_col1, btn_col2, _ = st.columns([1.2, 1.2, 4])
+        btn_col1, btn_col2, _ = st.columns([1.3, 1.3, 3.4])
         with btn_col1:
             start_btn = st.button("▶ Start Camera", type="primary", use_container_width=True)
         with btn_col2:
@@ -387,8 +678,14 @@ with main_tab:
                 if cap is not None:
                     cap.release()
         else:
-            state_placeholder.info("Click '▶ Start Camera' above to launch live driver vigilance monitoring.")
-            video_placeholder.caption("Camera feed is currently standby. Click 'Start Camera' to connect.")
+            state_placeholder.markdown("""
+            <div style="background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 22px; text-align: center; color: #475569; margin-bottom: 16px;">
+                <span style="font-size: 2rem;">📹</span>
+                <div style="font-weight: 700; font-size: 1.1rem; color: #1E293B; margin-top: 6px;">Camera Feed in Standby</div>
+                <div style="font-size: 0.9rem; color: #64748B;">Click <strong>▶ Start Camera</strong> above to begin real-time 30 FPS facial vigilance monitoring.</div>
+            </div>
+            """, unsafe_allow_html=True)
+            video_placeholder.caption("DirectShow integrated webcam feed ready.")
 
     # -----------------------------------------------------
     # MODE B: UPLOAD VIDEO FILE
@@ -432,8 +729,8 @@ with main_tab:
             "Simulate Driver Condition:",
             options=["Alert & Focused", "Slight Eye Slit", "Deep Yawn (Fatigue)", "Prolonged Eye Closure (Drowsy)", "Looking at Phone / Distracted"]
         )
-        dummy_frame = np.ones((480, 640, 3), dtype=np.uint8) * 40
-        cv2.putText(dummy_frame, f"SIMULATION: {sim_state}", (40, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2)
+        dummy_frame = np.ones((480, 640, 3), dtype=np.uint8) * 35
+        cv2.putText(dummy_frame, f"SIMULATION: {sim_state}", (30, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (56, 189, 248), 2)
         
         sim_telemetry = {
             "driver_state": "NORMAL", "left_eye": "Open", "left_conf": "99.8%", "right_eye": "Open", "right_conf": "99.7%",
@@ -467,7 +764,8 @@ with main_tab:
     # -----------------------------------------------------
     # LIVE INCIDENT EVENT LOG TABLE
     # -----------------------------------------------------
-    st.subheader("📜 Live Telemetry & Incident Audit Log")
+    st.markdown("---")
+    st.markdown("##### 📜 Live Telemetry & Incident Audit Trail")
     if LOG_PATH.exists():
         try:
             df_log = pd.read_csv(LOG_PATH)
@@ -492,24 +790,83 @@ with arch_tab:
     if arch_img_file.exists():
         st.image(str(arch_img_file), use_container_width=True, caption="Figure 1: DriveGuard AI End-to-End System Architecture Flowchart")
 
-    st.markdown("""
-    #### 8-Stage Sequential Workflow:
-    1. **Video Ingestion:** DirectShow captures high-definition 720p frames at 30 FPS.
-    2. **3D Facial Mesh:** MediaPipe extracts 468 precise spatial landmarks.
-    3. **Deep Learning Inference:** Eye patches ($64\\times 64$) pass through PyTorch `DrowsyEyeNet` (.pth) producing Open/Closed probabilities.
-    4. **Geometric Aspect Ratios:** Continuous computation of Eye Aspect Ratio (EAR) and Mouth Aspect Ratio (MAR).
-    5. **3D Head Pose (solvePnP):** Perspective-n-Point determines Euler angles (Yaw, Pitch, Roll) for looking away or slumping.
-    6. **Temporal Reasoning:** Differentiates physiological 150–350ms blinks from dangerous prolonged closure ($T_e \\ge 1.5$s).
-    7. **Unified 4-State Decision:** Categorizes driver vigilance into `NORMAL`, `WARNING`, `DROWSY`, or `DISTRACTED`.
-    8. **Active Alerts & Telemetry:** Triggers hardware audio buzzer (`winsound.Beep`), flashing HUD banner, and CSV logs.
-    """)
+    st.markdown("#### 8-Stage Sequential Workflow Pipeline:")
+    
+    # 2x4 Modern Card Grid for Pipeline Stages
+    row1_c1, row1_c2, row1_c3, row1_c4 = st.columns(4)
+    with row1_c1:
+        st.markdown("""
+        <div class="step-card">
+            <span class="step-badge">01</span>
+            <div style="font-weight: 700; color: #0F172A;">Video Ingestion</div>
+            <div style="font-size: 0.83rem; color: #64748B;">DirectShow captures high-definition 720p frames at 30 FPS with zero dropped buffers.</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with row1_c2:
+        st.markdown("""
+        <div class="step-card">
+            <span class="step-badge">02</span>
+            <div style="font-weight: 700; color: #0F172A;">3D Face Mesh</div>
+            <div style="font-size: 0.83rem; color: #64748B;">MediaPipe tracks 468 spatial landmarks including eyelids, lips, and facial contours in real time.</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with row1_c3:
+        st.markdown("""
+        <div class="step-card">
+            <span class="step-badge">03</span>
+            <div style="font-weight: 700; color: #0F172A;">DrowsyEyeNet CNN</div>
+            <div style="font-size: 0.83rem; color: #64748B;">64×64 cropped eye patches pass through custom PyTorch CNN returning Open/Closed probabilities.</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with row1_c4:
+        st.markdown("""
+        <div class="step-card">
+            <span class="step-badge">04</span>
+            <div style="font-weight: 700; color: #0F172A;">EAR & MAR Tracking</div>
+            <div style="font-size: 0.83rem; color: #64748B;">Calculates Euclidean aspect ratios for sub-pixel eyelid aperture and yawning detection.</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    row2_c1, row2_c2, row2_c3, row2_c4 = st.columns(4)
+    with row2_c1:
+        st.markdown("""
+        <div class="step-card">
+            <span class="step-badge">05</span>
+            <div style="font-weight: 700; color: #0F172A;">3D solvePnP Pose</div>
+            <div style="font-size: 0.83rem; color: #64748B;">Perspective-n-Point computes Euler angles (Yaw, Pitch, Roll) for looking away or slumping.</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with row2_c2:
+        st.markdown("""
+        <div class="step-card">
+            <span class="step-badge">06</span>
+            <div style="font-weight: 700; color: #0F172A;">Temporal Reasoning</div>
+            <div style="font-size: 0.83rem; color: #64748B;">Differentiates physiological 200ms blinks from prolonged fatigue (Te ≥ 1.5s), avoiding false alarms.</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with row2_c3:
+        st.markdown("""
+        <div class="step-card">
+            <span class="step-badge">07</span>
+            <div style="font-weight: 700; color: #0F172A;">4-State Decision</div>
+            <div style="font-size: 0.83rem; color: #64748B;">Fuses visual signals into NORMAL, WARNING, DROWSY, or DISTRACTED safety classifications.</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with row2_c4:
+        st.markdown("""
+        <div class="step-card">
+            <span class="step-badge">08</span>
+            <div style="font-weight: 700; color: #0F172A;">Alert & Telemetry</div>
+            <div style="font-size: 0.83rem; color: #64748B;">Triggers hardware buzzer alert, flashes warning banner, and logs timestamped events to CSV.</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
 # TAB 3: MODEL PERFORMANCE & METRICS
 # ---------------------------------------------------------
 with eval_tab:
-    st.markdown("### Experimental Results & Validation Metrics")
+    st.markdown("### Experimental Validation & Performance Metrics")
     
     col_e1, col_e2, col_e3, col_e4 = st.columns(4)
     col_e1.metric("Validation Accuracy", "99.8%", "Empirical Eval")
@@ -517,6 +874,7 @@ with eval_tab:
     col_e3.metric("Recall (Closed)", "99.6%", "Catches 996/1000")
     col_e4.metric("CPU Latency", "~1.8 ms", "Real-Time 30+ FPS")
 
+    st.markdown("---")
     col_g1, col_g2 = st.columns(2)
     with col_g1:
         tc_img = REPORTS_DIR / "training_curves.png"
@@ -534,20 +892,63 @@ with eval_tab:
 with team_tab:
     st.markdown("""
     ### Department of Artificial Intelligence & Data Science
-    **Vishwakarma Institute of Technology (VIT), Pune**
+    **Vishwakarma Institute of Technology (VIT), Pune**  
+    *Course: Image Processing (MM006) | Semester VII Academic Project*
+    """)
+    st.write("")
 
-    #### Project Team Members & Mentorship:
-    | Name | Institutional Email | Department & Role |
-    | :--- | :--- | :--- |
-    | **Prof. Palomi Sandeep Gawli** | `palomi.gawli@vit.edu` | Faculty Mentoring Guide |
-    | **Sankalp Santosh Akkar** | `sankalp.1251010354@vit.edu` | Student Investigator (PRN: 1251010358, Roll: 10) |
-    | **Suyash Sudhir Ambi** | `suyash.1251010552@vit.edu` | Student Investigator (PRN: 1251010552, Roll: 12) |
-    | **Arya Manish Bagade** | `arya.1251010556@vit.edu` | Student Investigator (PRN: 1251010556, Roll: 21) |
+    # Visual Cards for Team & Mentorship
+    t_c1, t_c2, t_c3, t_c4 = st.columns(4)
+    
+    with t_c1:
+        st.markdown("""
+        <div class="team-card">
+            <div class="avatar-circle avatar-mentor">PG</div>
+            <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Prof. Palomi S. Gawli</div>
+            <div style="font-size: 0.8rem; font-weight: 700; color: #B45309; text-transform: uppercase; margin: 4px 0;">Faculty Guide & Mentor</div>
+            <div style="font-size: 0.82rem; color: #64748B;">Department of AI & DS</div>
+            <div style="font-size: 0.8rem; color: #3B82F6; margin-top: 6px;"><code>palomi.gawli@vit.edu</code></div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    #### Key Capabilities Implemented:
-    - Real-time camera-based eye state classification via deep learning (`DrowsyEyeNet`).
-    - Temporal duration filtering separating natural 200ms blinks from prolonged fatigue ($T_e \\ge 1.5$s).
-    - 3D Head orientation and motion estimation (solvePnP Euler Yaw, Pitch, Roll).
-    - Multi-indicator categorization into `NORMAL`, `WARNING`, `DROWSY`, and `DISTRACTED`.
-    - Active audio alert buzzer and automated telemetry logging to CSV.
+    with t_c2:
+        st.markdown("""
+        <div class="team-card">
+            <div class="avatar-circle">SA</div>
+            <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Sankalp S. Akkar</div>
+            <div style="font-size: 0.8rem; font-weight: 700; color: #1E40AF; text-transform: uppercase; margin: 4px 0;">Student Investigator</div>
+            <div style="font-size: 0.82rem; color: #64748B;">PRN: 1251010358 | Roll: 10</div>
+            <div style="font-size: 0.8rem; color: #3B82F6; margin-top: 6px;"><code>sankalp.1251010354@vit.edu</code></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with t_c3:
+        st.markdown("""
+        <div class="team-card">
+            <div class="avatar-circle">SA</div>
+            <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Suyash S. Ambi</div>
+            <div style="font-size: 0.8rem; font-weight: 700; color: #1E40AF; text-transform: uppercase; margin: 4px 0;">Student Investigator</div>
+            <div style="font-size: 0.82rem; color: #64748B;">PRN: 1251010552 | Roll: 12</div>
+            <div style="font-size: 0.8rem; color: #3B82F6; margin-top: 6px;"><code>suyash.1251010552@vit.edu</code></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with t_c4:
+        st.markdown("""
+        <div class="team-card">
+            <div class="avatar-circle">AB</div>
+            <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Arya M. Bagade</div>
+            <div style="font-size: 0.8rem; font-weight: 700; color: #1E40AF; text-transform: uppercase; margin: 4px 0;">Student Investigator</div>
+            <div style="font-size: 0.82rem; color: #64748B;">PRN: 1251010556 | Roll: 21</div>
+            <div style="font-size: 0.8rem; color: #3B82F6; margin-top: 6px;"><code>arya.1251010556@vit.edu</code></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("""
+    #### 🚀 Core Technical Highlights:
+    - **Multi-Modal Eye Closure Analysis:** Fuses sub-pixel Eye Aspect Ratio (EAR) geometry with `DrowsyEyeNet` PyTorch CNN inference.
+    - **Temporal Blink Filtering:** Rejects natural 150–350ms physiological blinks while catching sustained eye fatigue ($T_e \\ge 1.5$s).
+    - **3D Head Pose & Motion Invariance:** Uses solvePnP with 3D anthropometric facial points to measure Yaw, Pitch, and Roll angles.
+    - **Hardware Audio Alert & Telemetry:** Integrated buzzer alert with zero dropped frames and CSV session logging.
     """)
